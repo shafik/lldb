@@ -1,5 +1,4 @@
-//===-- LibCxxOptional.cpp -----------------------------------------*- C++
-//-*-===//
+//===-- LibCxxOptional.cpp --------------------------------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
