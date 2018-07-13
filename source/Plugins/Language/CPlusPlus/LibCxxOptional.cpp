@@ -38,20 +38,6 @@ private:
 } // namespace
 
 bool OptionalFrontEnd::Update() {
-<<<<<<< HEAD
-  m_elements.clear();
-
-  ValueObjectSP engaged_sp(
-      m_backend.GetChildMemberWithName(ConstString("__engaged_"), true));
-
-  if (!engaged_sp) {
-    return false;
-  }
-
-  uint64_t num_elements = engaged_sp->GetValueAsSigned(0);
-
-  m_elements.assign(num_elements, ValueObjectSP());
-=======
   ValueObjectSP engaged_sp(
       m_backend.GetChildMemberWithName(ConstString("__engaged_"), true));
 
@@ -60,7 +46,6 @@ bool OptionalFrontEnd::Update() {
 
   m_size = engaged_sp->GetValueAsSigned(0);
 
->>>>>>> a7193dc7d... Addressing comments
   return false;
 }
 
