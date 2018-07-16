@@ -4,36 +4,25 @@
 #include <optional>
 
 using int_vect = std::vector<int> ;
-using string_vec = std::vector<std::string> ;
 using optional_int = std::optional<int> ;
 using optional_int_vect = std::optional<int_vect> ;
 using optional_string = std::optional<std::string> ;
 
 int main()
 {
-    optional_int number ;
+    optional_int number_not_engaged ;
+    optional_int number_engaged = 42 ;
 
-    printf( "%d\n", number.has_value() ) ; // break here
+    printf( "%d\n", *number_engaged) ; //% self.expect("frame variable number_not_engaged", substrs=["engaged=false",  "{}"])
+                                       //% self.expect("frame variable number_engaged", substrs=["engaged=true", "Value = 42", "}"])
 
-    number = 42 ;
+    optional_int_vect numbers{{1,2,3,4}} ;
 
-    printf( "%d\n", *number ) ; // break here
+    printf( "%d %d\n", numbers.value()[0], numbers.value()[1] ) ; //% self.expect("frame variable numbers", substrs=["engaged=true", "Value = size=4", "[0] = 1", "[1] = 2", "[2] = 3", "[3] = 4", "}"])
 
-    optional_int_vect numbers ;
+    optional_string ostring = "hello" ;
 
-    printf( "%d\n", numbers.has_value() ) ; // break here
+    printf( "%s\n", ostring->c_str() ) ; //% self.expect("frame variable ostring", substrs=["engaged=true", "Value = \"hello\"", "}"])
 
-    numbers = {1,2,3,4} ;
-
-    printf( "%d %d\n", numbers.value()[0], numbers.value()[1] ) ; // break here
-
-    optional_string ostring ;
-
-    printf( "%s\n", ostring.has_value() ) ; // break here
-
-    ostring = "hello" ;
-
-    printf( "%s\n", ostring->c_str() ) ; // break here
-
-    return 0;  // break here
+    return 0;
 }
