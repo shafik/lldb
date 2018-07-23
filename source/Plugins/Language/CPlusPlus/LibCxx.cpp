@@ -48,7 +48,7 @@ bool lldb_private::formatters::LibcxxOptionalSummaryProvider(
   llvm::StringRef engaged_as_cstring(
       engaged_sp->GetValueAsUnsigned(0) == 1 ? "true" : "false");
 
-  stream.Printf(" engaged=%s ", engaged_as_cstring.data());
+  stream.Printf(" Has Value=%s ", engaged_as_cstring.data());
 
   return true;
 }
