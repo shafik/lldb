@@ -39,6 +39,8 @@ bool lldb_private::formatters::LibcxxOptionalSummaryProvider(
   if (!valobj_sp)
     return false;
 
+  // An optional either contains a value or not, the member __engaged_ is
+  // a bool flag, it is true if the optional has a value and false otherwise.
   ValueObjectSP engaged_sp(
       valobj_sp->GetChildMemberWithName(ConstString("__engaged_"), true));
 

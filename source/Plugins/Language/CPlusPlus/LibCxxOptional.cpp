@@ -43,7 +43,10 @@ bool OptionalFrontEnd::Update() {
   if (!engaged_sp)
     return false;
 
-  m_size = engaged_sp->GetValueAsSigned(0);
+  // __engaged_ is a bool flag and is true if the optional contains a value.
+  // Converting it to unsigned gives us a size of 1 if it contains a value
+  // and 0 if not.
+  m_size = engaged_sp->GetValueAsUnsigned(0);
 
   return false;
 }
@@ -52,6 +55,10 @@ ValueObjectSP OptionalFrontEnd::GetChildAtIndex(size_t idx) {
   if (idx >= m_size)
     return ValueObjectSP();
 
+  // __val_ contains the underlying value of an optional if it has one.
+  // Currently because it is part of an anonymous union GetChildMemberWithName()
+  // does not peer through and find it unless we are at the parent itself.
+  // We can obtain the parent through __engaged_.
   ValueObjectSP val_sp(
       m_backend.GetChildMemberWithName(ConstString("__engaged_"), true)
           ->GetParent()
