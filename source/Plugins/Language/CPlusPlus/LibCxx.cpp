@@ -12,17 +12,24 @@
 // C Includes
 // C++ Includes
 // Other libraries and framework includes
+#include "llvm/ADT/StringRef.h"
+
 // Project includes
+#include "lldb/API/SBValue.h"
 #include "lldb/Core/Debugger.h"
 #include "lldb/Core/FormatEntity.h"
+#include "lldb/Core/Module.h"
 #include "lldb/Core/ValueObject.h"
 #include "lldb/Core/ValueObjectConstResult.h"
 #include "lldb/DataFormatters/FormattersHelpers.h"
 #include "lldb/DataFormatters/StringPrinter.h"
 #include "lldb/DataFormatters/TypeSummary.h"
 #include "lldb/DataFormatters/VectorIterator.h"
+#include "lldb/Symbol/Block.h"
 #include "lldb/Symbol/ClangASTContext.h"
+#include "lldb/Symbol/VariableList.h"
 #include "lldb/Target/ProcessStructReader.h"
+#include "lldb/Target/SectionLoadList.h"
 #include "lldb/Target/Target.h"
 #include "lldb/Utility/DataBufferHeap.h"
 #include "lldb/Utility/Endian.h"
@@ -574,6 +581,180 @@ public:
 
   lldb::ValueObjectSP GetSyntheticValue() override {
     static ConstString g___f_("__f_");
+      
+    //AddressType address_type ;
+    //lldb::addr_t __f_address = m_backend.GetCPPVTableAddress( address_type ) ;
+    lldb::addr_t __f_address = m_backend.GetAddressOf(  ) ;
+    
+    
+    fprintf( stderr, "__f_address = %p\n", reinterpret_cast<void*>(__f_address) ) ;
+      
+    ExecutionContext exe_ctx(m_backend.GetExecutionContextRef());
+      
+    Process *process = exe_ctx.GetProcessPtr();
+    uint32_t address_size = process->GetAddressByteSize() ;
+      
+    if (process != nullptr) {
+      Status status ;
+      lldb::addr_t vtable_address  = process->ReadPointerFromMemory(__f_address, status ) ;
+        
+      if( status.Fail() )
+          fprintf( stderr, "Fail for obtaining vtable_address\n") ;
+        
+      lldb::addr_t vtable_first_entry_address  = process->ReadPointerFromMemory(vtable_address, status ) ;
+      lldb::addr_t __f_second_address = __f_address + address_size ;
+        
+      lldb::addr_t function_address  = process->ReadPointerFromMemory(__f_second_address, status ) ;
+        
+      if( status.Fail() )
+        fprintf( stderr, "Fail for obtaining vtable_first_entry_address\n") ;
+        
+      fprintf( stderr, "vtable_address = %p\n", reinterpret_cast<void*>(vtable_address) ) ;
+      fprintf( stderr, "vtable_first_entry_address = %p\n", reinterpret_cast<void*>(vtable_first_entry_address) ) ;
+      fprintf( stderr, "vtable_first_entry_address = %p\n", reinterpret_cast<void*>(function_address) ) ;
+        
+      Target &target = process->GetTarget();
+        
+      if (!target.GetSectionLoadList().IsEmpty()) {
+          Address vtable_addr_resolved;
+          SymbolContext sc;
+          Symbol *symbol ;
+          
+          
+          if (target.GetSectionLoadList().ResolveLoadAddress(vtable_address,
+                                                             vtable_addr_resolved)) {
+              
+              target.GetImages().ResolveSymbolContextForAddress(
+                                                                vtable_addr_resolved, eSymbolContextEverything, sc);
+              
+              symbol = sc.symbol;
+              if (symbol != NULL) {
+                  llvm::StringRef vtable_name( symbol->GetName().GetCString() ) ;
+                  bool found_expected_start_string = vtable_name.startswith("vtable for std::__1::__function::__func<") ;
+                  
+                  if( found_expected_start_string ) {
+                    size_t first_open_angle_bracket = vtable_name.find( '<' ) + 1 ;
+                    size_t first_comma = vtable_name.find_first_of( ',' ) ;
+                      fprintf( stderr, "%zu %zu\n",first_open_angle_bracket, first_comma ) ;
+                    llvm::StringRef FirstType = vtable_name.slice(first_open_angle_bracket, first_comma) ;
+                    
+                    fprintf( stderr, "First type %s\n", FirstType.str().c_str() ) ;
+                      
+                      if( FirstType.contains("__invoke()")) {
+                          
+                          SymbolContextList scl ;
+                          size_t num_matches = sc.module_sp->FindFunctionSymbols( ConstString{FirstType}, 0, scl ) ;
+                          
+                          fprintf( stderr,  "Num func symbols matches %zu\n", num_matches) ;
+                      } else if( FirstType.contains("$_" ) ) {
+                          std::string func_to_match = FirstType.str() + "::operator()()" ;
+                          SymbolContextList scl ;
+                          //size_t num_matches = sc.module_sp->FindFunctions( RegularExpression{func_to_match}, true,true,true, scl ) ;
+                          //size_t num_matches = sc.module_sp->FindFunctions( ConstString{func_to_match}, nullptr, eFunctionNameTypeFull, true,true,true, scl ) ;
+                          //size_t num_matches = target.GetImages().FindFunctions( ConstString{func_to_match}, eFunctionNameTypeFull, true,true,true, scl ) ;
+                          size_t num_matches = target.GetImages().FindFunctions( RegularExpression{ llvm::Regex::escape(func_to_match)}, true,true,true, scl ) ;
+                          
+                          fprintf( stderr, "Matching ==%s==\n", func_to_match.c_str() ) ;
+                          fprintf( stderr,  "Num func symbols matches %zu\n", num_matches) ;
+                          
+                          if(scl.GetSize() >= 1 ) {
+                              SymbolContext sc2 = scl[0] ;
+                              
+                              fprintf( stderr, "Function name %s\n", sc2.GetFunctionName().GetCString()) ;
+                              
+                              AddressRange range ;
+                               sc2.GetAddressRange(eSymbolContextEverything, 0, false, range) ;
+                              
+                              Address address = range.GetBaseAddress() ;
+                              
+                              fprintf( stderr, "Function address %p\n", reinterpret_cast<void*>( address.GetCallableLoadAddress(&target) ) ) ;
+                              
+                              LineEntry le = sc2.GetFunctionStartLineEntry() ;
+                              
+                              if( le.IsValid() ) {
+                                  fprintf( stderr, "File name %s Line %u\n", le.file.GetFilename().GetCString(), le.line) ;
+                              }
+                              
+                              fprintf( stderr, "File name %s Line %u\n", sc2.line_entry.file.GetFilename().GetCString(), sc2.line_entry.line) ;
+                              
+                              Address addr ;
+                              if( target.ResolveLoadAddress(address.GetCallableLoadAddress(&target), addr) ) {
+                                  LineEntry le2 ;
+                                  addr.CalculateSymbolContextLineEntry(le2) ;
+                                  
+                                  fprintf( stderr, "File name %s Line %u\n", le2.file.GetFilename().GetCString(), le2.line) ;
+                              }
+                          }
+                          
+ 
+                          scl.Clear() ;
+                          
+                          num_matches = target.GetImages().FindSymbolsWithNameAndType( ConstString{FirstType}, eSymbolTypeAny, scl, true ) ;
+                          
+                          if( scl.GetSize() >= 1 ) {
+                              SymbolContext sc2 = scl[0] ;
+                              
+                              fprintf( stderr, "lambda name %s\n", sc2.GetFunctionName().GetCString()) ;
+                              
+                              AddressRange range ;
+                              sc2.GetAddressRange(eSymbolContextEverything, 0, false, range) ;
+                              
+                              Address address = range.GetBaseAddress() ;
+                              
+                              fprintf( stderr, "lambda address %p\n", reinterpret_cast<void*>( address.GetCallableLoadAddress(&target) ) ) ;
+                              
+                              LineEntry le = sc2.GetFunctionStartLineEntry() ;
+                              
+                              if( le.IsValid() ) {
+                                  fprintf( stderr, "File name %s Line %u\n", le.file.GetFilename().GetCString(), le.line) ;
+                              }
+                          }
+                      }
+                  }
+                  
+                  fprintf( stderr, "Vtable Name %s\n", vtable_name.data() ) ;
+                  
+              } else {
+                  fprintf( stderr, "symbol NULL\n") ;
+              }
+          }
+          
+          Address vtable_first_entry_address_resolved;
+          
+          if (target.GetSectionLoadList().ResolveLoadAddress(vtable_first_entry_address,
+                                                             vtable_first_entry_address_resolved)) {
+          
+              target.GetImages().ResolveSymbolContextForAddress(
+                                                                vtable_first_entry_address_resolved, eSymbolContextEverything, sc);
+              symbol = sc.symbol;
+              if (symbol != NULL) {
+                  fprintf( stderr, "%s\n", symbol->GetName().GetCString()) ;
+              } else {
+                  fprintf( stderr, "symbol NULL\n") ;
+              }
+    
+          }
+          
+          Address function_address_resolved;
+          
+          if (target.GetSectionLoadList().ResolveLoadAddress(function_address,
+                                                             function_address_resolved)) {
+          
+              target.GetImages().ResolveSymbolContextForAddress(
+                                                                function_address_resolved, eSymbolContextEverything, sc);
+              symbol = sc.symbol;
+              if (symbol != NULL) {
+                  fprintf( stderr, "%s\n", symbol->GetName().GetCString()) ;
+              } else {
+                  fprintf( stderr, "symbol NULL\n") ;
+              }
+          }
+      } else {
+          fprintf( stderr, "GetSectionLoadList().IsEmpty()\n") ;
+      }
+    }
+    
+      
     return m_backend.GetChildMemberWithName(g___f_, true);
   }
 };
