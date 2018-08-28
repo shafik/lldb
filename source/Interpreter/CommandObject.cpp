@@ -221,6 +221,7 @@ bool CommandObject::CheckRequirements(CommandReturnObject &result) {
     } else {
       StateType state = process->GetState();
       switch (state) {
+      case kNumStateType:
       case eStateInvalid:
       case eStateSuspended:
       case eStateCrashed:

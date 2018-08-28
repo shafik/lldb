@@ -837,6 +837,7 @@ void Process::Finalize() {
     Destroy(false);
     break;
 
+  case kNumStateType:
   case eStateInvalid:
   case eStateUnloaded:
   case eStateDetached:
@@ -1054,6 +1055,7 @@ bool Process::HandleProcessStateChangedEvent(const EventSP &event_sp,
     return false;
 
   switch (event_state) {
+  case kNumStateType:
   case eStateInvalid:
   case eStateUnloaded:
   case eStateAttaching:
@@ -1854,6 +1856,7 @@ Process::CreateBreakpointSite(const BreakpointLocationSP &owner,
 
   bool show_error = true;
   switch (GetState()) {
+  case kNumStateType:
   case eStateInvalid:
   case eStateUnloaded:
   case eStateConnected:
@@ -3582,6 +3585,7 @@ bool Process::ShouldBroadcastEvent(Event *event_ptr) {
     // always report them.
     return_value = true;
     break;
+  case kNumStateType:
   case eStateInvalid:
     // We stopped for no apparent reason, don't report it.
     return_value = false;

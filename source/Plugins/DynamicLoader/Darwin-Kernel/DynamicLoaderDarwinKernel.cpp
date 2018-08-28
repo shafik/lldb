@@ -1475,6 +1475,7 @@ void DynamicLoaderDarwinKernel::PrivateProcessStateChanged(Process *process,
   DEBUG_PRINTF("DynamicLoaderDarwinKernel::%s(%s)\n", __FUNCTION__,
                StateAsCString(state));
   switch (state) {
+  case kNumStateType:
   case eStateConnected:
   case eStateAttaching:
   case eStateLaunching:

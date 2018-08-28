@@ -18,6 +18,7 @@ using namespace lldb_private;
 
 const char *lldb_private::StateAsCString(StateType state) {
   switch (state) {
+  case kNumStateType:
   case eStateInvalid:
     return "invalid";
   case eStateUnloaded:
@@ -78,6 +79,7 @@ bool lldb_private::StateIsRunningState(StateType state) {
   case eStateStepping:
     return true;
 
+  case kNumStateType:
   case eStateConnected:
   case eStateDetached:
   case eStateInvalid:
@@ -93,6 +95,7 @@ bool lldb_private::StateIsRunningState(StateType state) {
 
 bool lldb_private::StateIsStoppedState(StateType state, bool must_exist) {
   switch (state) {
+  case kNumStateType:
   case eStateInvalid:
   case eStateConnected:
   case eStateAttaching:
